@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101b35">
+<title>ROYAL TILES</title>
+<style>
+:root{--navy:#101b35;--gold:#f4d27a;--ivory:#fff5d9}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding:14px;background:linear-gradient(155deg,#101b35,#263b61);color:white;font-family:system-ui,-apple-system,sans-serif}
+header{text-align:center;margin:8px 0 14px}h1{font-size:27px;letter-spacing:3px;color:var(--gold);margin:0}header small{color:#d9deeb}
+.stats{display:flex;gap:7px;max-width:560px;margin:12px auto}.stat{flex:1;text-align:center;padding:8px 4px;border:1px solid #ffffff30;background:#ffffff13;border-radius:12px;font-size:12px;color:#dce2f0}.stat b{display:block;color:#fff;font-size:18px;margin-top:2px}
+#board{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;width:min(100%,560px);margin:15px auto}
+.tile{min-width:0;aspect-ratio:1/1;border:1px solid #e5c77c;border-radius:11px;background:linear-gradient(145deg,#fff9e8,#e7d4a3);box-shadow:0 3px 0 #987d48;color:#19243c;font-size:clamp(19px,5.5vw,29px);display:grid;place-items:center;padding:0;cursor:pointer;touch-action:manipulation}
+.tile:active{transform:translateY(2px);box-shadow:0 1px 0 #987d48}.tile.gone{visibility:hidden;pointer-events:none}
+.tray{width:min(100%,560px);margin:14px auto;background:#ffffff15;border:1px solid #ffffff35;border-radius:14px;padding:10px}.tray-title{text-align:center;color:var(--gold);font-size:13px;margin-bottom:8px}.slots{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.slot{min-width:0;height:clamp(34px,9vw,48px);border-radius:8px;background:#09132999;border:1px dashed #d8c58d;display:grid;place-items:center;font-size:clamp(17px,5vw,25px)}
+#message{max-width:560px;min-height:42px;margin:12px auto;text-align:center;color:#ffe5a2;font-weight:600}
+.controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px auto;max-width:560px}
+.action{border:0;border-radius:10px;padding:11px 15px;background:var(--gold);color:#17223b;font-weight:750;font-size:14px}
+.action.secondary{background:#ffffff1c;color:#fff;border:1px solid #ffffff45}.action:disabled{opacity:.4}
+footer{text-align:center;color:#c4cbe0;font-size:11px;margin:20px 0 8px}
+@media(max-width:360px){#board{gap:5px}.tile{border-radius:8px}.stats{gap:4px}}
+</style>
+</head>
+<body>
+<header><h1>♛ ROYAL TILES</h1><small>Le jeu d'association royal</small></header>
+<div class="stats">
+ <div class="stat">NIVEAU<b id="level">1</b></div>
+ <div class="stat">SCORE<b id="score">0</b></div>
+ <div class="stat">TUILES<b id="left">30</b></div>
+</div>
+<main id="board" aria-label="Plateau de jeu"></main>
+<section class="tray"><div class="tray-title">TON PLATEAU — 7 CASES</div><div class="slots" id="slots"></div></section>
+<div id="message" aria-live="polite">Associe 3 tuiles identiques pour les faire disparaître.</div>
+<div class="controls">
+ <button class="action" id="next" hidden onclick="nextLevel()">Jouer le niveau suivant</button>
+ <button class="action secondary" onclick="restartLevel()">Recommencer le niveau</button>
+ <button class="action secondary" onclick="shuffleTiles()">Mélanger</button>
+</div>
+<footer>ROYAL TILES · Progression jusqu'au niveau 5 · Sauvegarde sur cet appareil</footer>
+<script>
+const symbols=['🐉','🏮','🌸','🀄','👑','🐼','🎎','🍵','🪭','⭐','🦚','🧧','🌙','🏯','🪷','🐯','🎐','🥮'];
+const sizes={1:30,2:36,3:42,4:48,5:54};
+let level=1,score=0,deck=[],tray=[],locked=false,won=false;
+try{const saved=JSON.parse(localStorage.getItem('royalTilesSave')||'{}');level=Math.min(5,Math.max(1,Number(saved.level)||1));score=Math.max(0,Number(saved.score)||0)}catch(e){}
+function save(){try{localStorage.setItem('royalTilesSave',JSON.stringify({level,score}))}catch(e){}}
+function makeDeck(){const count=sizes[level]||54;const pairs=count/3;const chosen=symbols.slice(0,pairs);let a=[];chosen.forEach(s=>{a.push(s,s,s)});for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function render(){
+ const board=document.getElementById('board');board.innerHTML='';
+ deck.forEach((v,i)=>{const b=document.createElement('button');b.className='tile'+(v===null?' gone':'');b.textContent=v||'';b.setAttribute('aria-label',v?'Tuile '+v:'Tuile retirée');b.disabled=v===null||locked;b.onclick=()=>pick(i);board.appendChild(b)});
+ const slots=document.getElementById('slots');slots.innerHTML='';
+ for(let i=0;i<7;i++){const s=document.createElement('div');s.className='slot';s.textContent=tray[i]||'';slots.appendChild(s)}
+ document.getElementById('level').textContent=level;
+ document.getElementById('score').textContent=score;
+ document.getElementById('left').textContent=deck.filter(x=>x!==null).length;
+ document.getElementById('next').hidden=!won;
+}
+function startLevel(){deck=makeDeck();tray=[];locked=false;won=false;document.getElementById('message').textContent='Niveau '+level+' : associe 3 tuiles identiques.';render();save()}
+function pick(i){
+ if(locked||deck[i]===null||deck[i]===undefined)return;
+ const v=deck[i];deck[i]=null;tray.push(v);
+ const matches=tray.filter(x=>x===v).length;
+ if(matches===3){tray=tray.filter(x=>x!==v);score+=30;document.getElementById('message').textContent='Bravo ! Trois tuiles identiques disparaissent. +30 points.'}
+ if(tray.length>=7){locked=true;document.getElementById('message').textContent='Plateau rempli ! Recommence ce niveau pour réessayer.'}
+ const remaining=deck.filter(x=>x!==null).length;
+ if(remaining===0&&!locked&&tray.length===0){locked=true;won=true;score+=100;document.getElementById('message').textContent=level<5?'Victoire ! Tu as terminé le niveau '+level+'. Passe au niveau suivant !':'Félicitations ! Tu as terminé les 5 premiers niveaux !';save()}
+ render();save();
+}
+function nextLevel(){if(!won)return;if(level<5){level++;startLevel()}else{document.getElementById('message').textContent='Tu as terminé les 5 niveaux disponibles. Recommence le niveau 5 pour rejouer.';document.getElementById('next').hidden=true}}
+function restartLevel(){startLevel()}
+function shuffleTiles(){if(locked)return;const remaining=deck.filter(x=>x!==null);for(let i=remaining.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[remaining[i],remaining[j]]=[remaining[j],remaining[i]]}let k=0;deck=deck.map(x=>x===null?null:remaining[k++]);render();document.getElementById('message').textContent='Les tuiles restantes ont été mélangées.'}
+startLevel();
+</script>
+</body></html>
