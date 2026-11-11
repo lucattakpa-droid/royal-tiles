@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#101b35">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>ROYAL TILES</title>
 <style>
 :root{--navy:#101b35;--gold:#f4d27a;--ivory:#fff5d9}
@@ -71,5 +72,12 @@ function nextLevel(){if(!won)return;if(level<5){level++;startLevel()}else{docume
 function restartLevel(){startLevel()}
 function shuffleTiles(){if(locked)return;const remaining=deck.filter(x=>x!==null);for(let i=remaining.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[remaining[i],remaining[j]]=[remaining[j],remaining[i]]}let k=0;deck=deck.map(x=>x===null?null:remaining[k++]);render();document.getElementById('message').textContent='Les tuiles restantes ont été mélangées.'}
 startLevel();
+</script><script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .catch(error => console.log("Erreur SW :", error));
+  });
+}
 </script>
 </body></html>
